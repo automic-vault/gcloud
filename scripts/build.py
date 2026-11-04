@@ -7,8 +7,12 @@ import pathlib
 import plistlib
 import shutil
 import subprocess
+import sys
 import tarfile
 import urllib.request
+
+if sys.version_info < (3, 12):
+    raise SystemExit('Build with Python 3.12 or later (secure archive extraction is required)')
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BUILD = ROOT / 'build'
@@ -53,6 +57,7 @@ for path in BUNDLE.rglob('*.pyc'):
     path.unlink()
 for name in ('av_store.py', 'bootstrap.py'):
     shutil.copy2(ROOT / 'isotope' / name, resources / name)
+run(sys.executable, '-m', 'unittest', 'discover', '-s', ROOT / 'tests', '-v')
 run('clang++', '-std=c++17', '-mmacosx-version-min=14.0', '-fblocks',
     '-I' + str(python / 'include/python3.13'), ROOT / 'isotope/main.cc',
     '-L' + str(python / 'lib'), '-lpython3.13', '-framework', 'CoreFoundation',
@@ -73,6 +78,11 @@ for path in BUNDLE.rglob('*'):
             native = stream.read(4) in magic
         path.chmod(0o755 if native or path.stat().st_mode & 0o111 else 0o644)
         if native and path != contents / 'MacOS/gcloud':
+            if path.suffix == '.dylib':
+                # Homebrew preserves @rpath IDs, but rewrites bare Tcl IDs.
+                # Normalize before signing so staging preserves the resource seal.
+                run('/usr/bin/install_name_tool', '-id',
+                    '@rpath/' + str(path.relative_to(python / 'lib')), path)
             run('/usr/bin/codesign', '--force', '--sign', identity, '--options', 'runtime', '--timestamp', path)
     elif path.is_dir():
         path.chmod(0o755)

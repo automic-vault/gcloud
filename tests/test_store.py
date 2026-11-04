@@ -41,7 +41,8 @@ class CustodyTests(unittest.TestCase):
         self.account = 'user@example.com'
         self.key = av_store.secret_name(self.account)
 
-    def request(self, operation, key, value=None, expected=None):
+    def request(self, operation, key, value=None, expected=None, context=None):
+        self.assertEqual(json.loads(context)["account"], self.account)
         self.calls.append(operation)
         if operation == 'keys':
             return self.values.get(key)
@@ -94,6 +95,20 @@ class CustodyTests(unittest.TestCase):
             self.store.Remove(self.account)
         self.assertIn('newer-login', self.values[self.key])
 
+    def test_second_load_does_not_rebase_a_stale_refresh(self):
+        self.store.Store(self.account, credential())
+        def refresh(instance, request):
+            instance.token = 'new-access-fixture'
+            instance._refresh_token = 'rotated'
+        with patch.object(Credentials, 'refresh', refresh):
+            first = self.store.Load(self.account)
+            self.values[self.key] = av_store.serialize(credential('newer-login'))
+            self.store.Load(self.account)
+            with self.assertRaisesRegex(RuntimeError, 'changed'):
+                first.refresh(None)
+            self.assertIsNone(first.token)
+        self.assertIn('newer-login', self.values[self.key])
+
     def test_failed_rotation_aborts_operation(self):
         self.store.Store(self.account, credential())
         def refresh(instance, request):
@@ -126,6 +141,20 @@ class CustodyTests(unittest.TestCase):
         for name in ['', 'a\0b', 'x' * 241, '\n', '\ud800']:
             with self.assertRaises((ValueError, UnicodeError)):
                 av_store.secret_name(name)
+
+    def test_upstream_logout_preserves_unrelated_legacy_files(self):
+        av_store.install()
+        av_store.store = self.store
+        self.store.Store(self.account, credential())
+        legacy = pathlib.Path(self.directory.name) / 'legacy_credentials' / self.account
+        legacy.mkdir(parents=True)
+        sentinel = legacy / 'unrelated'
+        sentinel.write_text('another installation')
+        with patch.object(upstream, 'RevokeCredentials') as revoke:
+            self.assertTrue(upstream.Revoke(self.account))
+            revoke.assert_called_once()
+        self.assertNotIn(self.key, self.values)
+        self.assertEqual(sentinel.read_text(), 'another installation')
 
     def test_upstream_login_store_cannot_create_legacy_credentials(self):
         av_store.install()

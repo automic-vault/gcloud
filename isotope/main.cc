@@ -33,9 +33,9 @@ static bool text(PyObject *object, std::string &value) {
   value.assign(p, length); return true;
 }
 static PyObject *request(PyObject *, PyObject *args) {
-  PyObject *op_arg, *key_arg, *value_arg = Py_None, *expected_arg = Py_None;
-  if (!PyArg_ParseTuple(args, "OO|OO", &op_arg, &key_arg, &value_arg, &expected_arg)) return nullptr;
-  std::string op, key, value, expected;
+  PyObject *op_arg, *key_arg, *value_arg = Py_None, *expected_arg = Py_None, *context_arg = Py_None;
+  if (!PyArg_ParseTuple(args, "OO|OOO", &op_arg, &key_arg, &value_arg, &expected_arg, &context_arg)) return nullptr;
+  std::string op, key, value, expected, context;
   if (!text(op_arg, op) || !text(key_arg, key) ||
       (op != "keys" && op != "gcloud-save" && op != "gcloud-delete") ||
       key.rfind("GCLOUD_AUTH_", 0) != 0 || key.size() <= 12 || key.size() > 492 ||
@@ -43,10 +43,12 @@ static PyObject *request(PyObject *, PyObject *args) {
     return fail("Invalid gcloud custody request");
   if (op == "gcloud-save" && !text(value_arg, value)) return fail("Invalid gcloud credential");
   if (expected_arg != Py_None && !text(expected_arg, expected)) return fail("Invalid prior credential");
+  if (!text(context_arg, context) || context.size() > 8192) return fail("Invalid gcloud operation context");
   xpc_object_t message = xpc_dictionary_create_empty();
   xpc_dictionary_set_string(message, "op", op.c_str());
   xpc_dictionary_set_string(message, "key", key.c_str());
   xpc_dictionary_set_string(message, "cwd", original_cwd.c_str());
+  xpc_dictionary_set_string(message, "gcloud_context", context.c_str());
   if (op == "gcloud-save") xpc_dictionary_set_string(message, "value", value.c_str());
   if (op != "keys") {
     xpc_dictionary_set_bool(message, "expected_present", expected_arg != Py_None);
@@ -59,7 +61,7 @@ static PyObject *request(PyObject *, PyObject *args) {
   xpc_dictionary_set_value(message, "args", argv); xpc_release(argv);
   if (op == "keys") {
     xpc_dictionary_set_string(message, "title", "gcloud credential requested");
-    xpc_dictionary_set_string(message, "detail", "gcloud needs its user OAuth credential for this operation.");
+    xpc_dictionary_set_string(message, "detail", ("gcloud needs its user OAuth credential. Resolved context: " + context).c_str());
     xpc_dictionary_set_bool(message, "replace_existing_env", true);
     xpc_dictionary_set_bool(message, "allow_missing_keys", false);
     xpc_object_t keys = xpc_array_create_empty();

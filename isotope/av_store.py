@@ -22,6 +22,9 @@ def secret_name(account):
 def validate_configuration():
     """Resolve properties after upstream parsing, before any protected load."""
     values = properties.VALUES
+    for name in values.auth.AllProperties(include_hidden=True):
+        if values.auth.Property(name).IsExplicitlySet():
+            raise ValueError('Unsupported gcloud Isotope auth override: ' + name)
     if values.core.universe_domain.Get() != 'googleapis.com':
         raise ValueError('gcloud Isotope supports the default Google universe only')
     for section, names in (
@@ -40,6 +43,23 @@ def validate_configuration():
             raise ValueError('gcloud Isotope does not support API endpoint overrides')
     if values.core.log_http.GetBool():
         raise ValueError('gcloud Isotope does not support HTTP credential logging')
+
+
+def request(operation, account, value=None, expected=None):
+    context = json.dumps({
+        'account': account,
+        'project': properties.VALUES.core.project.Get(),
+        'billing_project': properties.VALUES.billing.quota_project.Get(),
+        'universe': properties.VALUES.core.universe_domain.Get(),
+    }, sort_keys=True)
+    return _automic_vault.request(operation, secret_name(account), value, expected, context)
+
+
+def prepare_command(**kwargs):
+    from googlecloudsdk.core.configurations import named_configs
+    snapshot = named_configs.ActivePropertiesFile.Load()
+    named_configs.ActivePropertiesFile.Load = staticmethod(lambda: snapshot)
+    validate_configuration()
 
 
 def validate_payload(value):
@@ -115,7 +135,7 @@ class Store:
 
     def Load(self, account):
         validate_configuration()
-        value = _automic_vault.request('keys', secret_name(account))
+        value = request('keys', account)
         self.original[account] = value
         if value is None:
             return None
@@ -123,14 +143,23 @@ class Store:
         credential = creds.FromJsonGoogleAuth(value)
         credential._rapt_token = data.get('rapt_token')
         original_refresh = credential.refresh
+        expected = value
 
-        def refresh(request):
+        def refresh(http_request):
+            nonlocal expected
             validate_configuration()
-            original_refresh(request)
+            original_refresh(http_request)
             updated = serialize(credential)
-            if updated != self.original[account]:
-                _automic_vault.request('gcloud-save', secret_name(account), updated, self.original[account])
-                self.original[account] = updated
+            if updated != expected:
+                try:
+                    request('gcloud-save', account, updated, expected)
+                except Exception:
+                    credential.token = None
+                    credential.expiry = None
+                    raise
+                if self.original.get(account) == expected:
+                    self.original[account] = updated
+                expected = updated
 
         credential.refresh = refresh
         return credential
@@ -139,16 +168,16 @@ class Store:
         validate_configuration()
         value = serialize(credential)
         if account not in self.original:
-            self.original[account] = _automic_vault.request('keys', secret_name(account))
-        _automic_vault.request('gcloud-save', secret_name(account), value, self.original[account])
+            self.original[account] = request('keys', account)
+        request('gcloud-save', account, value, self.original[account])
         self.original[account] = value
         self._index(account, True)
 
     def Remove(self, account):
         validate_configuration()
         if account not in self.original:
-            self.original[account] = _automic_vault.request('keys', secret_name(account))
-        _automic_vault.request('gcloud-delete', secret_name(account), None, self.original[account])
+            self.original[account] = request('keys', account)
+        request('gcloud-delete', account, None, self.original[account])
         self.original[account] = None
         self._index(account, False)
 
@@ -166,14 +195,38 @@ def forbidden(*args, **kwargs):
     raise ValueError('This authentication or credential-export path is not supported by the gcloud Isotope')
 
 
+def revoke(account=None):
+    from googlecloudsdk.core.credentials import store as upstream
+    account = account or properties.VALUES.core.account.Get()
+    if not account:
+        raise ValueError('Select a gcloud account to revoke')
+    credential = upstream.Load(account, prevent_refresh=True)
+    revoked = False
+    try:
+        upstream.RevokeCredentials(credential)
+        revoked = True
+    except google_auth_credentials.TokenRevokeError as error:
+        if not error.args or error.args[0] not in ('invalid_token', 'invalid_request'):
+            raise
+    store.Remove(account)
+    # Upstream Revoke also deletes legacy_credentials/<account>. Those files
+    # belong to other installations and are outside this custody transaction.
+    return revoked
+
+
 def install():
     """Installed before upstream dispatch; replacing stores never enables fallback."""
     from googlecloudsdk.core.credentials import store as upstream
+    from googlecloudsdk import gcloud_main
+    # This pre-run hook runs after global flags, before the command or any ECP
+    # helper. Freeze the config in memory and do not launch external proxies.
+    gcloud_main.StartECPProxyManager = prepare_command
     creds.GetCredentialStore = get_store
     creds.MaybeAttachAccessTokenCacheStoreGoogleAuth = lambda credential, **kwargs: credential
     creds.SqliteCredentialStore = forbidden
     creds.AccessTokenCache = forbidden
     creds.ADC.DumpADCToFile = forbidden
+    upstream.Revoke = revoke
     upstream._LegacyGenerator.WriteTemplate = lambda self: None
     upstream._LegacyGenerator.Clean = lambda self: None
     upstream._LoadFromFileOverride = forbidden

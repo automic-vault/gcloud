@@ -1,0 +1,17 @@
+name:
+  isotope:gcloud
+
+replaces:
+  google:gcloud
+
+build: |
+  python3.13 scripts/build.py
+  cp build/cli-592.0.0.tgz out.tgz
+
+justification:
+  title:
+    Unprotected Credential Access
+  detail: |
+    This Isotope keeps supported gcloud user OAuth credentials in Automic Vault
+    custody. Its signed Python runtime binds credential use to the original
+    command. Read README.md for the supported scope and release checks.
