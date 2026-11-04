@@ -1,12 +1,25 @@
 {
   "gcloud": {
     "version": "592.0.0",
-    "url": "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-592.0.0-darwin-arm.tar.gz",
-    "sha256": "a0b1f5bae5d036ade6570b7c9d10bbdf8c1f4b319714a5b4a6f04a3af10548e0"
+    "url": "https://storage.googleapis.com/download/storage/v1/b/cloud-sdk-release/o/google-cloud-cli-592.0.0-darwin-arm.tar.gz?generation=1793711619434422&alt=media",
+    "sha256": "a0b1f5bae5d036ade6570b7c9d10bbdf8c1f4b319714a5b4a6f04a3af10548e0",
+    "gcs": {
+      "bucket": "cloud-sdk-release",
+      "object": "google-cloud-cli-592.0.0-darwin-arm.tar.gz",
+      "generation": "1793711619434422",
+      "size": "54683326",
+      "md5": "jgjInbbFrYa8zDugVtV3Gw==",
+      "crc32c": "HYKrPA=="
+    }
   },
   "python": {
     "version": "3.13.18",
     "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.18%2B20261026-aarch64-apple-darwin-install_only.tar.gz",
-    "sha256": "e5af2fde6a937a0e0c795a0c595c4efb70578d57463a2657c819992b9b9acbac"
+    "sha256": "e5af2fde6a937a0e0c795a0c595c4efb70578d57463a2657c819992b9b9acbac",
+    "github": {
+      "repository": "astral-sh/python-build-standalone",
+      "tag": "20261026",
+      "asset": "cpython-3.13.18+20261026-aarch64-apple-darwin-install_only.tar.gz"
+    }
   }
 }

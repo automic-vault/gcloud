@@ -11,6 +11,8 @@ import sys
 import tarfile
 import urllib.request
 
+from source_integrity import verify_download, verify_publisher_metadata
+
 if sys.version_info < (3, 12):
     raise SystemExit('Build with Python 3.12 or later (secure archive extraction is required)')
 
@@ -25,12 +27,12 @@ def run(*args):
 
 def fetch(name):
     entry = LOCK[name]
+    verify_publisher_metadata(name, entry)
     path = BUILD / (name + '.tar.gz')
     if not path.exists():
         with urllib.request.urlopen(entry['url'], timeout=60) as response, path.open('wb') as out:
             shutil.copyfileobj(response, out)
-    if hashlib.sha256(path.read_bytes()).hexdigest() != entry['sha256']:
-        raise ValueError(name + ' archive digest mismatch')
+    verify_download(name, entry, path)
     return path
 
 BUILD.mkdir(exist_ok=True)

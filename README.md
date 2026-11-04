@@ -4,7 +4,11 @@ Google Cloud CLI with user OAuth credentials in Automic Vault custody.
 
 This repository builds a pinned Google distribution with a small credential-store
 adapter and a native, signed Python entry point. `upstream.json` pins both source
-inputs by SHA-256; generated SDK and Python trees stay in `build/`.
+inputs by SHA-256; generated SDK and Python trees stay in `build/`. The gcloud
+archive is also pinned to an immutable Google Cloud Storage generation and its
+published size, MD5, and CRC32C metadata. The Python archive SHA-256 must match
+the digest published on its GitHub release asset. Google does not publish a
+detached GPG signature for the gcloud tar archive.
 
 ## Supported workflow
 
