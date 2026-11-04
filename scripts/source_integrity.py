@@ -29,13 +29,14 @@ def verify_publisher_metadata(name, entry):
         }
         if any(published.get(key) != value for key, value in expected.items()):
             raise ValueError(name + ' Google Cloud Storage metadata mismatch')
-        if 'generation=' + metadata['generation'] not in entry['url']:
-            raise ValueError(name + ' URL is not pinned to the verified object generation')
+        if entry['url'] != published.get('mediaLink'):
+            raise ValueError(name + ' URL is not the verified Google Cloud Storage object generation')
     elif metadata := entry.get('github'):
         release = _json('https://api.github.com/repos/{}/releases/tags/{}'.format(
             metadata['repository'], urllib.parse.quote(metadata['tag'], safe='')))
         asset = next((asset for asset in release['assets'] if asset['name'] == metadata['asset']), None)
-        if asset is None or asset.get('digest') != 'sha256:' + entry['sha256']:
+        if (asset is None or asset.get('digest') != 'sha256:' + entry['sha256']
+                or asset.get('browser_download_url') != entry['url']):
             raise ValueError(name + ' GitHub release digest mismatch')
     else:
         raise ValueError(name + ' has no publisher metadata')

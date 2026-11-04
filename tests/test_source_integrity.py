@@ -34,7 +34,8 @@ class SourceIntegrityTests(unittest.TestCase):
                     'size': '16', 'md5': 'zc6fJC7gihDmcyfxVKakeQ==', 'crc32c': 'crc'},
         }
         with patch.object(source_integrity.urllib.request, 'urlopen', return_value=Response({
-            'generation': '123', 'size': '16', 'md5Hash': entry['gcs']['md5'], 'crc32c': 'crc'})):
+            'generation': '123', 'size': '16', 'md5Hash': entry['gcs']['md5'], 'crc32c': 'crc',
+            'mediaLink': entry['url']})):
             source_integrity.verify_publisher_metadata('gcloud', entry)
             entry['gcs']['generation'] = 'changed'
             with self.assertRaisesRegex(ValueError, 'metadata mismatch'):
@@ -49,10 +50,12 @@ class SourceIntegrityTests(unittest.TestCase):
         entry = {'url': 'https://example.invalid/python', 'sha256': 'abc',
                  'github': {'repository': 'owner/repo', 'tag': 'tag', 'asset': 'python.tgz'}}
         with patch.object(source_integrity.urllib.request, 'urlopen', return_value=Response({
-            'assets': [{'name': 'python.tgz', 'digest': 'sha256:abc'}]})):
+            'assets': [{'name': 'python.tgz', 'digest': 'sha256:abc',
+                        'browser_download_url': entry['url']}]})):
             source_integrity.verify_publisher_metadata('python', entry)
         with patch.object(source_integrity.urllib.request, 'urlopen', return_value=Response({
-            'assets': [{'name': 'python.tgz', 'digest': 'sha256:different'}]})):
+            'assets': [{'name': 'python.tgz', 'digest': 'sha256:different',
+                        'browser_download_url': entry['url']}]})):
             with self.assertRaisesRegex(ValueError, 'GitHub release digest'):
                 source_integrity.verify_publisher_metadata('python', entry)
 
