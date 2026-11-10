@@ -51,14 +51,14 @@ python3 -m unittest discover -s tests -v
 
 The build downloads and verifies the locked archives, compiles the native
 entry point, signs all native resources with Hardened Runtime and no exceptions,
-seals the bundle, and writes `build/cli-592.0.0.tgz`. The full distribution and
+seals the bundle, and writes `build/cli-593.0.0.tgz`. The full distribution and
 component licence notices remain in the bundle.
 
 Before publication, update the tap formula's SHA-256 to the exact archive and run:
 
 ```sh
 cd ../..
-brew ruby Scripts/test-formula-install.rb Formula/gcloud-isotope.rb Isotopes/gcloud/build/cli-592.0.0.tgz
+brew ruby Scripts/test-formula-install.rb Formula/gcloud-isotope.rb Isotopes/gcloud/build/cli-593.0.0.tgz
 ```
 
 Also run av's focused Rust installer tests, signed-archive verification test,
