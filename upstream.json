@@ -1,15 +1,15 @@
 {
   "gcloud": {
-    "version": "593.0.0",
-    "url": "https://storage.googleapis.com/download/storage/v1/b/cloud-sdk-release/o/google-cloud-cli-593.0.0-darwin-arm.tar.gz?generation=1794319759501993&alt=media",
-    "sha256": "3351dba1dbed21be0bc77c47462d6ba5d28a25ecc31e878ab1c0f32cc442741b",
+    "version": "594.0.0",
+    "url": "https://storage.googleapis.com/download/storage/v1/b/cloud-sdk-release/o/google-cloud-cli-594.0.0-darwin-arm.tar.gz?generation=1794922251725525&alt=media",
+    "sha256": "45fbcc5a2caf9ec43847383d2f9fe4720eb8a650349be8d9bd271bdfb6912b55",
     "gcs": {
       "bucket": "cloud-sdk-release",
-      "object": "google-cloud-cli-593.0.0-darwin-arm.tar.gz",
-      "generation": "1794319759501993",
-      "size": "54790650",
-      "md5": "9ZmWXnXCRlGHCXMxDd/Xfw==",
-      "crc32c": "lM9Bbg=="
+      "object": "google-cloud-cli-594.0.0-darwin-arm.tar.gz",
+      "generation": "1794922251725525",
+      "size": "54881691",
+      "md5": "v66MCrKQ9T2t/GDzAisryA==",
+      "crc32c": "p0bvLw=="
     }
   },
   "python": {
