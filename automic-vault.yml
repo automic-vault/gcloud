@@ -6,7 +6,7 @@ replaces:
 
 build: |
   python3.13 scripts/build.py
-  cp build/cli-594.0.0.tgz out.tgz
+  cp build/cli-594.0.1.tgz out.tgz
 
 justification:
   title:
